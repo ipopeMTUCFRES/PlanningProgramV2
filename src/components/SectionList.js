@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import WorkLocationView from './WorkLocationView';
 import WorkLocationMap from './WorkLocationMap';
 
-function SectionList({ section, onBack }) {
+function SectionList({ section, planningMode, onBack }) {
   const [workLocations, setWorkLocations] = useState([]);
   const [workLocationsWithGPS, setWorkLocationsWithGPS] = useState([]);
   const [showCreateLocation, setShowCreateLocation] = useState(false);
@@ -17,6 +17,11 @@ function SectionList({ section, onBack }) {
   const [cleanupCode1, setCleanupCode1] = useState('No Listing');
   const [cleanupCode2, setCleanupCode2] = useState('No Listing');
   const [brushQuarterSpans, setBrushQuarterSpans] = useState('');
+  const [primaryTrims, setPrimaryTrims] = useState('');
+  const [primaryRemovals, setPrimaryRemovals] = useState('');
+  const [primaryHazards, setPrimaryHazards] = useState('');
+  const [secondaryTrims, setSecondaryTrims] = useState('');
+  const [secondaryRemovals, setSecondaryRemovals] = useState('');
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [editingLocation, setEditingLocation] = useState(null);
   const [sectionTotals, setSectionTotals] = useState({
@@ -36,10 +41,7 @@ function SectionList({ section, onBack }) {
     const locationList = await window.api.getWorkLocations(section.id);
     setWorkLocations(locationList);
 
-    // Get all trees for this section to calculate average GPS coordinates and totals
-    const trees = await window.api.getSectionTrees(section.id);
-
-    // Calculate section totals
+    // Calculate section totals based on planning mode
     const totals = {
       primaryTrims: 0,
       primaryRemovals: 0,
@@ -49,23 +51,40 @@ function SectionList({ section, onBack }) {
       totalBrush: 0
     };
 
-    trees.forEach(tree => {
-      if (tree.power_line_type === 'Primary') {
-        if (tree.action_type === 'Trim') totals.primaryTrims++;
-        else if (tree.action_type === 'Removal') totals.primaryRemovals++;
-        else if (tree.action_type === 'Hazard') totals.primaryHazards++;
-      } else if (tree.power_line_type === 'Secondary') {
-        if (tree.action_type === 'Trim') totals.secondaryTrims++;
-        else if (tree.action_type === 'Removal') totals.secondaryRemovals++;
-      }
-    });
+    if (planningMode === 'work-location') {
+      // In work-location mode, sum up the counts from work locations
+      locationList.forEach(location => {
+        totals.primaryTrims += location.primary_trims || 0;
+        totals.primaryRemovals += location.primary_removals || 0;
+        totals.primaryHazards += location.primary_hazards || 0;
+        totals.secondaryTrims += location.secondary_trims || 0;
+        totals.secondaryRemovals += location.secondary_removals || 0;
+        if (location.brush_quarter_spans) {
+          totals.totalBrush += location.brush_quarter_spans;
+        }
+      });
+    } else {
+      // In individual-tree mode, count from actual trees
+      const trees = await window.api.getSectionTrees(section.id);
 
-    // Calculate total brush from work locations
-    locationList.forEach(location => {
-      if (location.brush_quarter_spans) {
-        totals.totalBrush += location.brush_quarter_spans;
-      }
-    });
+      trees.forEach(tree => {
+        if (tree.power_line_type === 'Primary') {
+          if (tree.action_type === 'Trim') totals.primaryTrims++;
+          else if (tree.action_type === 'Removal') totals.primaryRemovals++;
+          else if (tree.action_type === 'Hazard') totals.primaryHazards++;
+        } else if (tree.power_line_type === 'Secondary') {
+          if (tree.action_type === 'Trim') totals.secondaryTrims++;
+          else if (tree.action_type === 'Removal') totals.secondaryRemovals++;
+        }
+      });
+
+      // Calculate total brush from work locations
+      locationList.forEach(location => {
+        if (location.brush_quarter_spans) {
+          totals.totalBrush += location.brush_quarter_spans;
+        }
+      });
+    }
 
     setSectionTotals(totals);
 
@@ -127,7 +146,12 @@ function SectionList({ section, onBack }) {
         clearingEquipment3,
         cleanupCode1,
         cleanupCode2,
-        brushQuarterSpans: brushQuarterSpans ? parseFloat(brushQuarterSpans) : null
+        brushQuarterSpans: brushQuarterSpans ? parseFloat(brushQuarterSpans) : null,
+        primaryTrims: primaryTrims ? parseInt(primaryTrims) : 0,
+        primaryRemovals: primaryRemovals ? parseInt(primaryRemovals) : 0,
+        primaryHazards: primaryHazards ? parseInt(primaryHazards) : 0,
+        secondaryTrims: secondaryTrims ? parseInt(secondaryTrims) : 0,
+        secondaryRemovals: secondaryRemovals ? parseInt(secondaryRemovals) : 0
       });
     } else {
       await window.api.createWorkLocation({
@@ -142,7 +166,12 @@ function SectionList({ section, onBack }) {
         clearingEquipment3,
         cleanupCode1,
         cleanupCode2,
-        brushQuarterSpans: brushQuarterSpans ? parseFloat(brushQuarterSpans) : null
+        brushQuarterSpans: brushQuarterSpans ? parseFloat(brushQuarterSpans) : null,
+        primaryTrims: primaryTrims ? parseInt(primaryTrims) : 0,
+        primaryRemovals: primaryRemovals ? parseInt(primaryRemovals) : 0,
+        primaryHazards: primaryHazards ? parseInt(primaryHazards) : 0,
+        secondaryTrims: secondaryTrims ? parseInt(secondaryTrims) : 0,
+        secondaryRemovals: secondaryRemovals ? parseInt(secondaryRemovals) : 0
       });
     }
 
@@ -157,6 +186,11 @@ function SectionList({ section, onBack }) {
     setCleanupCode1('No Listing');
     setCleanupCode2('No Listing');
     setBrushQuarterSpans('');
+    setPrimaryTrims('');
+    setPrimaryRemovals('');
+    setPrimaryHazards('');
+    setSecondaryTrims('');
+    setSecondaryRemovals('');
     setShowCreateLocation(false);
     setEditingLocation(null);
     await loadWorkLocations();
@@ -175,6 +209,11 @@ function SectionList({ section, onBack }) {
     setCleanupCode1(location.cleanup_code_1 || 'No Listing');
     setCleanupCode2(location.cleanup_code_2 || 'No Listing');
     setBrushQuarterSpans(location.brush_quarter_spans || '');
+    setPrimaryTrims(location.primary_trims || '');
+    setPrimaryRemovals(location.primary_removals || '');
+    setPrimaryHazards(location.primary_hazards || '');
+    setSecondaryTrims(location.secondary_trims || '');
+    setSecondaryRemovals(location.secondary_removals || '');
     setShowCreateLocation(true);
   };
 
@@ -197,6 +236,7 @@ function SectionList({ section, onBack }) {
     return (
       <WorkLocationView
         workLocation={selectedLocation}
+        planningMode={planningMode}
         onBack={handleBackToLocations}
       />
     );
@@ -384,6 +424,79 @@ function SectionList({ section, onBack }) {
                 placeholder="Enter whole number"
               />
             </div>
+
+            {planningMode === 'work-location' && (
+              <div className="form-section-divider">
+                <h4 className="form-section-header">Tree Counts</h4>
+
+                <div className="count-fields-grid">
+                  <div className="form-group">
+                    <label htmlFor="primaryTrims">Primary Trims:</label>
+                    <input
+                      type="number"
+                      id="primaryTrims"
+                      value={primaryTrims}
+                      onChange={(e) => setPrimaryTrims(e.target.value)}
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="primaryRemovals">Primary Removals:</label>
+                    <input
+                      type="number"
+                      id="primaryRemovals"
+                      value={primaryRemovals}
+                      onChange={(e) => setPrimaryRemovals(e.target.value)}
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="primaryHazards">Primary Hazards:</label>
+                    <input
+                      type="number"
+                      id="primaryHazards"
+                      value={primaryHazards}
+                      onChange={(e) => setPrimaryHazards(e.target.value)}
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="secondaryTrims">Secondary Trims:</label>
+                    <input
+                      type="number"
+                      id="secondaryTrims"
+                      value={secondaryTrims}
+                      onChange={(e) => setSecondaryTrims(e.target.value)}
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="secondaryRemovals">Secondary Removals:</label>
+                    <input
+                      type="number"
+                      id="secondaryRemovals"
+                      value={secondaryRemovals}
+                      onChange={(e) => setSecondaryRemovals(e.target.value)}
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <button type="submit" className="btn btn-primary">
               {editingLocation ? 'Update Work Location' : 'Create Work Location'}

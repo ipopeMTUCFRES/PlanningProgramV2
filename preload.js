@@ -42,5 +42,7 @@ contextBridge.exposeInMainWorld('api', {
   getSectionTrees: (sectionId) => ipcRenderer.invoke('get-section-trees', sectionId),
 
   exportSection: (sectionId) => ipcRenderer.invoke('export-section', sectionId),
+  exportSectionPDF: (sectionId) => ipcRenderer.invoke('export-section-pdf', sectionId),
+  savePDFFile: (filePath, data) => ipcRenderer.invoke('save-pdf-file', filePath, data),
   importSection: (projectId) => ipcRenderer.invoke('import-section', projectId)
 });

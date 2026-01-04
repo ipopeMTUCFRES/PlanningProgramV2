@@ -49,6 +49,7 @@ function createTables() {
       headquarters_id INTEGER NOT NULL,
       substation_id INTEGER NOT NULL,
       circuit_id INTEGER NOT NULL,
+      planning_mode TEXT CHECK(planning_mode IN ('individual-tree', 'work-location')) DEFAULT 'individual-tree',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (headquarters_id) REFERENCES headquarters(id),
       FOREIGN KEY (substation_id) REFERENCES substations(id),
@@ -84,6 +85,11 @@ function createTables() {
       cleanup_code_1 TEXT CHECK(cleanup_code_1 IN ('No Listing', 'No Selection', 'Chip and haul', 'Chip and blow', 'Windrow', 'Mower')) DEFAULT 'No Listing',
       cleanup_code_2 TEXT CHECK(cleanup_code_2 IN ('No Listing', 'No Selection', 'Chip and haul', 'Chip and blow', 'Windrow', 'Mower')) DEFAULT 'No Listing',
       brush_quarter_spans INTEGER,
+      primary_trims INTEGER DEFAULT 0,
+      primary_removals INTEGER DEFAULT 0,
+      primary_hazards INTEGER DEFAULT 0,
+      secondary_trims INTEGER DEFAULT 0,
+      secondary_removals INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
     );
@@ -129,6 +135,30 @@ function createTables() {
   // Add canopy_removal column to trees table (migration)
   try {
     db.exec(`ALTER TABLE trees ADD COLUMN canopy_removal BOOLEAN DEFAULT 0;`);
+  } catch (error) {
+    // Column already exists, ignore error
+  }
+
+  // Add tree count columns to work_locations table (migration)
+  const countColumns = [
+    'primary_trims',
+    'primary_removals',
+    'primary_hazards',
+    'secondary_trims',
+    'secondary_removals'
+  ];
+
+  countColumns.forEach(column => {
+    try {
+      db.exec(`ALTER TABLE work_locations ADD COLUMN ${column} INTEGER DEFAULT 0;`);
+    } catch (error) {
+      // Column already exists, ignore error
+    }
+  });
+
+  // Add planning_mode column to projects table (migration)
+  try {
+    db.exec(`ALTER TABLE projects ADD COLUMN planning_mode TEXT CHECK(planning_mode IN ('individual-tree', 'work-location')) DEFAULT 'individual-tree';`);
   } catch (error) {
     // Column already exists, ignore error
   }

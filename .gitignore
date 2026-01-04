@@ -5,6 +5,11 @@ node_modules/
 dist/
 build/
 
+# Distribution packages (use GitHub Releases instead)
+*.zip
+*.dmg
+*.exe
+
 # Database files
 *.db
 *.db-shm

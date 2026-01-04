@@ -9,7 +9,7 @@ import CircuitManagement from './components/CircuitManagement';
 import Settings from './components/Settings';
 
 function App() {
-  const [mode, setMode] = useState(null); // 'planning' or 'administration'
+  const [mode, setMode] = useState(null); // 'individual-tree-planning', 'work-location-planning', or 'administration'
   const [view, setView] = useState('projects');
   const [adminView, setAdminView] = useState('menu'); // 'menu', 'species', 'headquarters', 'circuits'
   const [selectedProject, setSelectedProject] = useState(null);
@@ -134,11 +134,22 @@ function App() {
     );
   }
 
-  // Planning mode
+  // Planning modes
+  const planningModeTitle = mode === 'individual-tree-planning'
+    ? 'Individual Tree - Planning'
+    : 'Work Location - Planning';
+
+  const planningModeType = mode === 'individual-tree-planning'
+    ? 'individual-tree'
+    : 'work-location';
+
+  // Filter projects by planning mode
+  const filteredProjects = projects.filter(p => p.planning_mode === planningModeType);
+
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Tree Inventory Management <span className="version-badge">v1.0.0</span></h1>
+        <h1>{planningModeTitle} <span className="version-badge">v1.0.0</span></h1>
         <div className="header-buttons">
           <button className="settings-icon-btn" onClick={() => setShowSettings(true)} title="Settings">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -162,7 +173,7 @@ function App() {
               </button>
             </div>
             <ProjectList
-              projects={projects}
+              projects={filteredProjects}
               onSelectProject={handleProjectSelect}
               onEditProject={handleEditProject}
               onDeleteProject={handleDeleteProject}
@@ -173,13 +184,14 @@ function App() {
         {view === 'create-project' && (
           <CreateProject
             editingProject={editingProject}
+            planningMode={planningModeType}
             onProjectCreated={handleProjectCreated}
             onCancel={handleCancelCreate}
           />
         )}
 
         {view === 'project-view' && selectedProject && (
-          <ProjectView project={selectedProject} onBack={handleBack} />
+          <ProjectView project={selectedProject} planningMode={selectedProject.planning_mode} onBack={handleBack} />
         )}
       </main>
       <Settings isOpen={showSettings} onClose={() => setShowSettings(false)} />

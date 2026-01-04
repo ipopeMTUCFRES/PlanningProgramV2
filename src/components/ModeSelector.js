@@ -13,16 +13,22 @@ function ModeSelector({ onSelectMode }) {
           <p className="mode-subtitle">Choose how you would like to use the system</p>
 
           <div className="mode-grid">
-            <div className="mode-card-simple" onClick={() => onSelectMode('planning')}>
-              <h3>Planning Mode</h3>
-              <p>Manage projects, sections, work locations, and tree inventory data</p>
-              <button className="btn btn-primary">Enter Planning Mode</button>
+            <div className="mode-card-simple" onClick={() => onSelectMode('individual-tree-planning')}>
+              <h3>Individual Tree - Planning</h3>
+              <p>Record individual trees with detailed data for each tree at work locations</p>
+              <button className="btn btn-primary">Enter Individual Tree Mode</button>
+            </div>
+
+            <div className="mode-card-simple" onClick={() => onSelectMode('work-location-planning')}>
+              <h3>Work Location - Planning</h3>
+              <p>Record tree counts by work location without individual tree details</p>
+              <button className="btn btn-primary">Enter Work Location Mode</button>
             </div>
 
             <div className="mode-card-simple" onClick={() => onSelectMode('administration')}>
               <h3>Administration Mode</h3>
               <p>Manage species codes, headquarters, circuits, and system settings</p>
-              <button className="btn btn-secondary">Enter Administration Mode</button>
+              <button className="btn btn-primary">Enter Administration Mode</button>
             </div>
           </div>
         </div>

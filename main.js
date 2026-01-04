@@ -67,8 +67,8 @@ ipcMain.handle('get-circuits', (event, substationId) => {
 });
 
 ipcMain.handle('create-project', (event, projectData) => {
-  const stmt = db.prepare('INSERT INTO projects (name, headquarters_id, substation_id, circuit_id) VALUES (?, ?, ?, ?)');
-  const result = stmt.run(projectData.name, projectData.headquartersId, projectData.substationId, projectData.circuitId);
+  const stmt = db.prepare('INSERT INTO projects (name, headquarters_id, substation_id, circuit_id, planning_mode) VALUES (?, ?, ?, ?, ?)');
+  const result = stmt.run(projectData.name, projectData.headquartersId, projectData.substationId, projectData.circuitId, projectData.planningMode || 'individual-tree');
   return { id: result.lastInsertRowid };
 });
 
@@ -118,8 +118,9 @@ ipcMain.handle('create-work-location', (event, workLocationData) => {
   const stmt = db.prepare(`
     INSERT INTO work_locations
     (section_id, number, address, comments, ownership_type, notification_type,
-     clearing_equipment_1, clearing_equipment_2, clearing_equipment_3, cleanup_code_1, cleanup_code_2, brush_quarter_spans)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     clearing_equipment_1, clearing_equipment_2, clearing_equipment_3, cleanup_code_1, cleanup_code_2, brush_quarter_spans,
+     primary_trims, primary_removals, primary_hazards, secondary_trims, secondary_removals)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const result = stmt.run(
     workLocationData.sectionId,
@@ -133,7 +134,12 @@ ipcMain.handle('create-work-location', (event, workLocationData) => {
     workLocationData.clearingEquipment3 || 'No Listing',
     workLocationData.cleanupCode1 || 'No Listing',
     workLocationData.cleanupCode2 || 'No Listing',
-    workLocationData.brushQuarterSpans ? Math.ceil(workLocationData.brushQuarterSpans) : null
+    workLocationData.brushQuarterSpans ? Math.ceil(workLocationData.brushQuarterSpans) : null,
+    workLocationData.primaryTrims || 0,
+    workLocationData.primaryRemovals || 0,
+    workLocationData.primaryHazards || 0,
+    workLocationData.secondaryTrims || 0,
+    workLocationData.secondaryRemovals || 0
   );
   return { id: result.lastInsertRowid };
 });
@@ -384,7 +390,7 @@ ipcMain.handle('delete-work-location', (event, workLocationId) => {
 ipcMain.handle('update-project', (event, projectId, projectData) => {
   const stmt = db.prepare(`
     UPDATE projects
-    SET name = ?, headquarters_id = ?, substation_id = ?, circuit_id = ?
+    SET name = ?, headquarters_id = ?, substation_id = ?, circuit_id = ?, planning_mode = ?
     WHERE id = ?
   `);
   stmt.run(
@@ -392,6 +398,7 @@ ipcMain.handle('update-project', (event, projectId, projectData) => {
     projectData.headquartersId,
     projectData.substationId,
     projectData.circuitId,
+    projectData.planningMode || 'individual-tree',
     projectId
   );
   return { success: true };
@@ -408,7 +415,9 @@ ipcMain.handle('update-work-location', (event, workLocationId, workLocationData)
     UPDATE work_locations
     SET number = ?, address = ?, comments = ?, ownership_type = ?, notification_type = ?,
         clearing_equipment_1 = ?, clearing_equipment_2 = ?, clearing_equipment_3 = ?,
-        cleanup_code_1 = ?, cleanup_code_2 = ?, brush_quarter_spans = ?
+        cleanup_code_1 = ?, cleanup_code_2 = ?, brush_quarter_spans = ?,
+        primary_trims = ?, primary_removals = ?, primary_hazards = ?,
+        secondary_trims = ?, secondary_removals = ?
     WHERE id = ?
   `);
   stmt.run(
@@ -423,6 +432,11 @@ ipcMain.handle('update-work-location', (event, workLocationId, workLocationData)
     workLocationData.cleanupCode1 || 'No Listing',
     workLocationData.cleanupCode2 || 'No Listing',
     workLocationData.brushQuarterSpans ? Math.ceil(workLocationData.brushQuarterSpans) : null,
+    workLocationData.primaryTrims || 0,
+    workLocationData.primaryRemovals || 0,
+    workLocationData.primaryHazards || 0,
+    workLocationData.secondaryTrims || 0,
+    workLocationData.secondaryRemovals || 0,
     workLocationId
   );
   return { success: true };
@@ -431,28 +445,25 @@ ipcMain.handle('update-work-location', (event, workLocationId, workLocationData)
 // Export section to Excel
 ipcMain.handle('export-section', async (event, sectionId) => {
   try {
-    // Get section info
-    const section = db.prepare('SELECT * FROM sections WHERE id = ?').get(sectionId);
+    // Get section info with project planning mode
+    const section = db.prepare(`
+      SELECT s.*, p.planning_mode
+      FROM sections s
+      JOIN projects p ON s.project_id = p.id
+      WHERE s.id = ?
+    `).get(sectionId);
+
+    const planningMode = section.planning_mode;
 
     // Get all work locations for this section
     const workLocations = db.prepare('SELECT * FROM work_locations WHERE section_id = ?').all(sectionId);
 
-    // Get all trees for each work location
-    const trees = db.prepare(`
-      SELECT t.*, wl.id as work_location_id
-      FROM trees t
-      JOIN work_locations wl ON t.work_location_id = wl.id
-      WHERE wl.section_id = ?
-    `).all(sectionId);
-
     // Prepare data for Excel export
     const excelData = [];
 
-    for (const location of workLocations) {
-      const locationTrees = trees.filter(t => t.work_location_id === location.id);
-
-      if (locationTrees.length === 0) {
-        // If no trees, add one row for the work location
+    if (planningMode === 'work-location') {
+      // Work-location mode: Export counts from work locations
+      for (const location of workLocations) {
         excelData.push({
           'Section Name': section.name,
           'Work Location Number': location.number || '',
@@ -466,17 +477,27 @@ ipcMain.handle('export-section', async (event, sectionId) => {
           'Cleanup Code 1': location.cleanup_code_1 || '',
           'Cleanup Code 2': location.cleanup_code_2 || '',
           'Brush (Quarter Spans)': location.brush_quarter_spans || '',
-          'Tree Diameter (in)': '',
-          'Tree Species': '',
-          'Power Line Type': '',
-          'Action Type': '',
-          'Latitude': '',
-          'Longitude': '',
-          'Tree Created At': ''
+          'Primary Trims': location.primary_trims || 0,
+          'Primary Removals': location.primary_removals || 0,
+          'Primary Hazards': location.primary_hazards || 0,
+          'Secondary Trims': location.secondary_trims || 0,
+          'Secondary Removals': location.secondary_removals || 0
         });
-      } else {
-        // Add a row for each tree
-        for (const tree of locationTrees) {
+      }
+    } else {
+      // Individual-tree mode: Export individual trees
+      const trees = db.prepare(`
+        SELECT t.*, wl.id as work_location_id
+        FROM trees t
+        JOIN work_locations wl ON t.work_location_id = wl.id
+        WHERE wl.section_id = ?
+      `).all(sectionId);
+
+      for (const location of workLocations) {
+        const locationTrees = trees.filter(t => t.work_location_id === location.id);
+
+        if (locationTrees.length === 0) {
+          // If no trees, add one row for the work location
           excelData.push({
             'Section Name': section.name,
             'Work Location Number': location.number || '',
@@ -490,14 +511,39 @@ ipcMain.handle('export-section', async (event, sectionId) => {
             'Cleanup Code 1': location.cleanup_code_1 || '',
             'Cleanup Code 2': location.cleanup_code_2 || '',
             'Brush (Quarter Spans)': location.brush_quarter_spans || '',
-            'Tree Diameter (in)': tree.diameter || '',
-            'Tree Species': tree.species || '',
-            'Power Line Type': tree.power_line_type || '',
-            'Action Type': tree.action_type || '',
-            'Latitude': tree.latitude || '',
-            'Longitude': tree.longitude || '',
-            'Tree Created At': tree.created_at || ''
+            'Tree Diameter (in)': '',
+            'Tree Species': '',
+            'Power Line Type': '',
+            'Action Type': '',
+            'Latitude': '',
+            'Longitude': '',
+            'Tree Created At': ''
           });
+        } else {
+          // Add a row for each tree
+          for (const tree of locationTrees) {
+            excelData.push({
+              'Section Name': section.name,
+              'Work Location Number': location.number || '',
+              'Address': location.address,
+              'Comments': location.comments || '',
+              'Ownership Type': location.ownership_type || '',
+              'Notification Type': location.notification_type || '',
+              'Clearing Equipment 1': location.clearing_equipment_1 || '',
+              'Clearing Equipment 2': location.clearing_equipment_2 || '',
+              'Clearing Equipment 3': location.clearing_equipment_3 || '',
+              'Cleanup Code 1': location.cleanup_code_1 || '',
+              'Cleanup Code 2': location.cleanup_code_2 || '',
+              'Brush (Quarter Spans)': location.brush_quarter_spans || '',
+              'Tree Diameter (in)': tree.diameter || '',
+              'Tree Species': tree.species || '',
+              'Power Line Type': tree.power_line_type || '',
+              'Action Type': tree.action_type || '',
+              'Latitude': tree.latitude || '',
+              'Longitude': tree.longitude || '',
+              'Tree Created At': tree.created_at || ''
+            });
+          }
         }
       }
     }
@@ -526,6 +572,164 @@ ipcMain.handle('export-section', async (event, sectionId) => {
     return { success: true, filePath: result.filePath };
   } catch (error) {
     console.error('Export error:', error);
+    return { success: false, message: error.message };
+  }
+});
+
+// Export section to PDF
+ipcMain.handle('export-section-pdf', async (event, sectionId) => {
+  try {
+    // Get section info with project planning mode
+    const section = db.prepare(`
+      SELECT s.*, p.planning_mode
+      FROM sections s
+      JOIN projects p ON s.project_id = p.id
+      WHERE s.id = ?
+    `).get(sectionId);
+
+    const planningMode = section.planning_mode;
+
+    // Get all work locations for this section
+    const workLocations = db.prepare('SELECT * FROM work_locations WHERE section_id = ?').all(sectionId);
+
+    // Calculate section totals based on planning mode
+    const totals = {
+      primaryTrims: 0,
+      primaryRemovals: 0,
+      primaryHazards: 0,
+      secondaryTrims: 0,
+      secondaryRemovals: 0,
+      totalBrush: 0
+    };
+
+    let trees = [];
+    let locationSummaries = [];
+
+    if (planningMode === 'work-location') {
+      // Use counts from work locations
+      workLocations.forEach(location => {
+        totals.primaryTrims += location.primary_trims || 0;
+        totals.primaryRemovals += location.primary_removals || 0;
+        totals.primaryHazards += location.primary_hazards || 0;
+        totals.secondaryTrims += location.secondary_trims || 0;
+        totals.secondaryRemovals += location.secondary_removals || 0;
+        if (location.brush_quarter_spans) {
+          totals.totalBrush += location.brush_quarter_spans;
+        }
+      });
+
+      // Prepare work location summaries with counts
+      locationSummaries = workLocations.map(location => {
+        return {
+          location,
+          trees: [], // No individual trees in work-location mode
+          counts: {
+            primaryTrims: location.primary_trims || 0,
+            primaryRemovals: location.primary_removals || 0,
+            primaryHazards: location.primary_hazards || 0,
+            secondaryTrims: location.secondary_trims || 0,
+            secondaryRemovals: location.secondary_removals || 0
+          }
+        };
+      });
+    } else {
+      // Individual-tree mode: Get all trees for each work location
+      trees = db.prepare(`
+        SELECT t.*, wl.id as work_location_id
+        FROM trees t
+        JOIN work_locations wl ON t.work_location_id = wl.id
+        WHERE wl.section_id = ?
+      `).all(sectionId);
+
+      // Calculate totals from individual trees
+      trees.forEach(tree => {
+        if (tree.power_line_type === 'Primary') {
+          if (tree.action_type === 'Trim') totals.primaryTrims++;
+          else if (tree.action_type === 'Removal') totals.primaryRemovals++;
+          else if (tree.action_type === 'Hazard') totals.primaryHazards++;
+        } else if (tree.power_line_type === 'Secondary') {
+          if (tree.action_type === 'Trim') totals.secondaryTrims++;
+          else if (tree.action_type === 'Removal') totals.secondaryRemovals++;
+        }
+      });
+
+      // Calculate total brush from work locations
+      workLocations.forEach(location => {
+        if (location.brush_quarter_spans) {
+          totals.totalBrush += location.brush_quarter_spans;
+        }
+      });
+
+      // Prepare work location summaries with individual trees
+      locationSummaries = workLocations.map(location => {
+        const locationTrees = trees.filter(t => t.work_location_id === location.id);
+
+        // Count trees by type for this location
+        const locationTreeCounts = {
+          primaryTrims: 0,
+          primaryRemovals: 0,
+          primaryHazards: 0,
+          secondaryTrims: 0,
+          secondaryRemovals: 0
+        };
+
+        locationTrees.forEach(tree => {
+          if (tree.power_line_type === 'Primary') {
+            if (tree.action_type === 'Trim') locationTreeCounts.primaryTrims++;
+            else if (tree.action_type === 'Removal') locationTreeCounts.primaryRemovals++;
+            else if (tree.action_type === 'Hazard') locationTreeCounts.primaryHazards++;
+          } else if (tree.power_line_type === 'Secondary') {
+            if (tree.action_type === 'Trim') locationTreeCounts.secondaryTrims++;
+            else if (tree.action_type === 'Removal') locationTreeCounts.secondaryRemovals++;
+          }
+        });
+
+        return {
+          location,
+          trees: locationTrees,
+          counts: locationTreeCounts
+        };
+      });
+    }
+
+    // Show save dialog
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export Section to PDF',
+      defaultPath: `${section.name.replace(/[^a-z0-9]/gi, '_')}_report.pdf`,
+      filters: [
+        { name: 'PDF Files', extensions: ['pdf'] }
+      ]
+    });
+
+    if (result.canceled) {
+      return { success: false, message: 'Export canceled' };
+    }
+
+    // Send data to renderer for PDF generation
+    return {
+      success: true,
+      filePath: result.filePath,
+      data: {
+        section,
+        totals,
+        locationSummaries
+      }
+    };
+  } catch (error) {
+    console.error('PDF export error:', error);
+    return { success: false, message: error.message };
+  }
+});
+
+// Save PDF file
+ipcMain.handle('save-pdf-file', async (event, filePath, data) => {
+  try {
+    const fs = require('fs');
+    const buffer = Buffer.from(data);
+    fs.writeFileSync(filePath, buffer);
+    return { success: true };
+  } catch (error) {
+    console.error('Save PDF error:', error);
     return { success: false, message: error.message };
   }
 });

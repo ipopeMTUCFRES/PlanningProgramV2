@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-function CreateProject({ editingProject, onProjectCreated, onCancel }) {
+function CreateProject({ editingProject, planningMode, onProjectCreated, onCancel }) {
   const [name, setName] = useState('');
   const [headquarters, setHeadquarters] = useState([]);
   const [substations, setSubstations] = useState([]);
@@ -78,14 +78,16 @@ function CreateProject({ editingProject, onProjectCreated, onCancel }) {
         name,
         headquartersId: parseInt(selectedHQ),
         substationId: parseInt(selectedSubstation),
-        circuitId: parseInt(selectedCircuit)
+        circuitId: parseInt(selectedCircuit),
+        planningMode: planningMode
       });
     } else {
       await window.api.createProject({
         name,
         headquartersId: parseInt(selectedHQ),
         substationId: parseInt(selectedSubstation),
-        circuitId: parseInt(selectedCircuit)
+        circuitId: parseInt(selectedCircuit),
+        planningMode: planningMode
       });
     }
 

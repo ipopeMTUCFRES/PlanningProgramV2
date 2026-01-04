@@ -3,14 +3,16 @@ import TreeForm from './TreeForm';
 import TreeList from './TreeList';
 import TreeMap from './TreeMap';
 
-function WorkLocationView({ workLocation, onBack }) {
+function WorkLocationView({ workLocation, planningMode, onBack }) {
   const [trees, setTrees] = useState([]);
   const [showTreeForm, setShowTreeForm] = useState(false);
   const [editingTree, setEditingTree] = useState(null);
 
   useEffect(() => {
-    loadTrees();
-  }, [workLocation.id]);
+    if (planningMode !== 'work-location') {
+      loadTrees();
+    }
+  }, [workLocation.id, planningMode]);
 
   const loadTrees = async () => {
     const treeList = await window.api.getTrees(workLocation.id);
@@ -41,14 +43,23 @@ function WorkLocationView({ workLocation, onBack }) {
   };
 
   // Calculate tree counts by power line type and action type
-  // Primary totals
-  const primaryTrimCount = trees.filter(t => t.power_line_type === 'Primary' && t.action_type === 'Trim').length;
-  const primaryRemovalCount = trees.filter(t => t.power_line_type === 'Primary' && t.action_type === 'Removal').length;
-  const primaryHazardCount = trees.filter(t => t.power_line_type === 'Primary' && t.action_type === 'Hazard').length;
+  let primaryTrimCount, primaryRemovalCount, primaryHazardCount, secondaryTrimCount, secondaryRemovalCount;
 
-  // Secondary totals (no hazards allowed)
-  const secondaryTrimCount = trees.filter(t => t.power_line_type === 'Secondary' && t.action_type === 'Trim').length;
-  const secondaryRemovalCount = trees.filter(t => t.power_line_type === 'Secondary' && t.action_type === 'Removal').length;
+  if (planningMode === 'work-location') {
+    // Use counts from work location data
+    primaryTrimCount = workLocation.primary_trims || 0;
+    primaryRemovalCount = workLocation.primary_removals || 0;
+    primaryHazardCount = workLocation.primary_hazards || 0;
+    secondaryTrimCount = workLocation.secondary_trims || 0;
+    secondaryRemovalCount = workLocation.secondary_removals || 0;
+  } else {
+    // Count individual trees
+    primaryTrimCount = trees.filter(t => t.power_line_type === 'Primary' && t.action_type === 'Trim').length;
+    primaryRemovalCount = trees.filter(t => t.power_line_type === 'Primary' && t.action_type === 'Removal').length;
+    primaryHazardCount = trees.filter(t => t.power_line_type === 'Primary' && t.action_type === 'Hazard').length;
+    secondaryTrimCount = trees.filter(t => t.power_line_type === 'Secondary' && t.action_type === 'Trim').length;
+    secondaryRemovalCount = trees.filter(t => t.power_line_type === 'Secondary' && t.action_type === 'Removal').length;
+  }
 
   // Group trees by power line type and action type
   const primaryTrimTrees = trees.filter(t => t.power_line_type === 'Primary' && t.action_type === 'Trim');
@@ -127,26 +138,35 @@ function WorkLocationView({ workLocation, onBack }) {
         </div>
       </div>
 
-      <div className="trees-container">
-        <div className="toolbar">
-          <h3>Trees ({trees.length})</h3>
-          {!showTreeForm && (
-            <button onClick={() => setShowTreeForm(true)} className="btn btn-primary">
-              Add Tree
-            </button>
-          )}
+      {planningMode === 'work-location' && (
+        <div className="info-message" style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#e3f2fd', borderRadius: '8px', color: '#1976d2' }}>
+          <p style={{ margin: 0 }}>
+            <strong>Work Location Mode:</strong> This work location uses aggregate tree counts. Individual tree details are not recorded in this planning mode.
+          </p>
         </div>
+      )}
 
-        {showTreeForm && (
-          <TreeForm
-            workLocationId={workLocation.id}
-            editingTree={editingTree}
-            onTreeSaved={handleTreeCreated}
-            onCancel={handleCancelForm}
-          />
-        )}
+      {planningMode !== 'work-location' && (
+        <div className="trees-container">
+          <div className="toolbar">
+            <h3>Trees ({trees.length})</h3>
+            {!showTreeForm && (
+              <button onClick={() => setShowTreeForm(true)} className="btn btn-primary">
+                Add Tree
+              </button>
+            )}
+          </div>
 
-        {trees.length > 0 && <TreeMap trees={trees} />}
+          {showTreeForm && (
+            <TreeForm
+              workLocationId={workLocation.id}
+              editingTree={editingTree}
+              onTreeSaved={handleTreeCreated}
+              onCancel={handleCancelForm}
+            />
+          )}
+
+          {trees.length > 0 && <TreeMap trees={trees} />}
 
         {/* Primary Power Lines Trees */}
         {(primaryTrimCount > 0 || primaryRemovalCount > 0 || primaryHazardCount > 0) && (
@@ -217,12 +237,13 @@ function WorkLocationView({ workLocation, onBack }) {
           </div>
         )}
 
-        {trees.length === 0 && !showTreeForm && (
-          <div className="empty-state">
-            <p>No trees recorded yet. Add your first tree to get started.</p>
-          </div>
-        )}
-      </div>
+          {trees.length === 0 && !showTreeForm && (
+            <div className="empty-state">
+              <p>No trees recorded yet. Add your first tree to get started.</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

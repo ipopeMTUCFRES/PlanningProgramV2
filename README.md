@@ -4,17 +4,21 @@ A desktop application for managing tree inventory data with GPS tracking, projec
 
 ## Features
 
-- **Project Management**: Organize tree inventory data into projects and sections
+- **Dual Planning Modes**:
+  - **Individual Tree Planning**: Track individual trees with GPS, species, diameter, and full details
+  - **Work Location Planning**: Record aggregate tree counts per work location without individual tree details
+- **Project Management**: Organize tree inventory data into projects and sections with automatic filtering by planning mode
 - **GPS Integration**: Automatically capture GPS coordinates for trees and work locations
 - **Comprehensive Tree Data**: Track species, diameter, power line types, actions, and canopy removal
 - **Work Location Management**: Record brush removal, equipment, cleanup codes, and special conditions
-- **Interactive Maps**: Visualize trees and work locations on interactive maps
+- **Interactive Maps**: Visualize trees and work locations on interactive maps (Individual Tree mode)
 - **Excel Import/Export**: Import sections from Excel and export complete project data
+- **PDF Reports**: Generate detailed section reports with all tree and work location data
 - **Species Management**: Maintain a database of tree species codes and names
 - **Circuit & Headquarters**: Track circuits, substations, and headquarters information
 - **Section Analytics**: Automatic calculation of primary/secondary units, trees per mile, and brush totals
 - **Dark Mode**: Full dark mode support with customizable font sizes
-- **Dual Mode Interface**: Separate Planning and Administration modes for different workflows
+- **Administration Mode**: Separate interface for managing species, headquarters, and circuits
 
 ## System Requirements
 
@@ -30,15 +34,27 @@ A desktop application for managing tree inventory data with GPS tracking, projec
 
 ## Installation
 
-### macOS
+### Download Options
 
-1. **Download the installer**
-   - Download `Tree-Inventory-1.0.0.dmg` from the [Releases](../../releases) page
+Choose the method that works best for you:
 
-2. **Install the application**
-   - Double-click the downloaded `.dmg` file
-   - Drag the "Tree Inventory" app to your Applications folder
-   - Eject the disk image
+**Option 1: Download Pre-built Packages (Recommended)**
+- Download pre-built zip packages from the [Releases](../../releases) page
+- Mac: Download `TreeInventory-Mac.zip` (~396 MB)
+- Windows: Download `TreeInventory-Windows.zip` (~431 MB)
+
+**Option 2: Build from Source**
+- See [DISTRIBUTION.md](DISTRIBUTION.md) for build instructions
+
+### macOS Installation
+
+1. **Download the package**
+   - Download `TreeInventory-Mac.zip` from the [Releases](../../releases) page
+
+2. **Extract and install**
+   - Unzip the downloaded file
+   - Open the `mac` folder
+   - Drag "Tree Inventory.app" to your Applications folder
 
 3. **First launch**
    - Open the application from your Applications folder
@@ -46,30 +62,29 @@ A desktop application for managing tree inventory data with GPS tracking, projec
    - Click "Open" in the dialog to confirm
    - Grant location permissions when prompted
 
-### Windows
+### Windows Installation
 
-1. **Download the installer**
-   - Download `Tree-Inventory-Setup-1.0.0.exe` from the [Releases](../../releases) page
+1. **Download the package**
+   - Download `TreeInventory-Windows.zip` from the [Releases](../../releases) page
 
-2. **Install the application**
-   - Double-click the downloaded `.exe` file
-   - If Windows SmartScreen appears, click "More info" then "Run anyway"
-   - Follow the installation wizard prompts
-   - Choose installation location (default is recommended)
-   - Click "Install"
+2. **Extract and run**
+   - Unzip the downloaded file to a location of your choice
+   - Open the `win-unpacked` folder
+   - Double-click "Tree Inventory.exe" to run the application
+   - You may create a desktop shortcut for easy access
 
 3. **First launch**
-   - The application will launch automatically after installation
+   - If Windows SmartScreen appears, click "More info" then "Run anyway"
    - Grant location permissions when prompted
-   - You can also launch from the Start Menu or desktop shortcut
 
 ## Getting Started
 
 ### Initial Setup
 
 1. **Choose Your Mode**
-   - **Planning Mode**: For field work and data entry
-   - **Administration Mode**: For managing species, headquarters, and circuits
+   - **Individual Tree - Planning**: Track individual trees with full details and GPS
+   - **Work Location - Planning**: Record aggregate tree counts per work location
+   - **Administration Mode**: Manage species, headquarters, and circuits
 
 2. **Administration Setup** (First Time)
    - Select Administration mode
@@ -78,10 +93,11 @@ A desktop application for managing tree inventory data with GPS tracking, projec
    - Add circuits and substations
 
 3. **Create Your First Project**
-   - Switch to Planning mode
+   - Select your preferred planning mode (Individual Tree or Work Location)
    - Click "Create New Project"
    - Enter project details (name, headquarters, circuit, substation)
    - Click "Create Project"
+   - Note: Projects are filtered by planning mode, so switch modes to see different project types
 
 ### Working with Projects
 
@@ -99,7 +115,7 @@ A desktop application for managing tree inventory data with GPS tracking, projec
 5. Add brush quarter spans, equipment, and cleanup codes
 6. Click "Add Work Location"
 
-#### Recording Trees
+#### Recording Trees (Individual Tree Mode Only)
 1. Open a work location
 2. Click "Add Tree"
 3. Capture GPS or enter manually
@@ -110,6 +126,17 @@ A desktop application for managing tree inventory data with GPS tracking, projec
    - Action Type (Trim, Removal, or Hazard)
    - Canopy Removal (if applicable)
 5. Click "Add Tree"
+
+#### Recording Tree Counts (Work Location Mode Only)
+1. When creating or editing a work location, you'll see a "Tree Counts" section
+2. Enter aggregate counts for:
+   - Primary Trims
+   - Primary Removals
+   - Primary Hazards
+   - Secondary Trims
+   - Secondary Removals
+3. Section totals are automatically calculated from these counts
+4. Individual tree details are not tracked in this mode
 
 ### Importing and Exporting Data
 

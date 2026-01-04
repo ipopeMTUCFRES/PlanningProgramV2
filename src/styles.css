@@ -211,6 +211,31 @@ body {
   margin-top: 1.5rem;
 }
 
+.form-section-divider {
+  border-top: 1px solid #e0e0e0;
+  margin: 2rem 0 1.5rem 0;
+  padding-top: 1.5rem;
+}
+
+.form-section-header {
+  margin-bottom: 1rem;
+  color: #2c3e50;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.count-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .count-fields-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .inline-form {
   display: flex;
   gap: 1rem;
@@ -1448,4 +1473,34 @@ html[data-theme="dark"] .work-location-table {
 
 html[data-theme="dark"] .work-location-table td {
   color: var(--text-primary);
+}
+
+/* Dark mode for administration tables */
+html[data-theme="dark"] .species-table,
+html[data-theme="dark"] .admin-table {
+  background: var(--bg-secondary);
+}
+
+html[data-theme="dark"] .species-table td,
+html[data-theme="dark"] .admin-table td {
+  color: var(--text-primary);
+}
+
+html[data-theme="dark"] .species-table tbody tr,
+html[data-theme="dark"] .admin-table tbody tr {
+  border-bottom-color: var(--border-light);
+}
+
+html[data-theme="dark"] .species-count,
+html[data-theme="dark"] .admin-count {
+  color: var(--text-secondary);
+}
+
+html[data-theme="dark"] .species-container,
+html[data-theme="dark"] .admin-container {
+  color: var(--text-primary);
+}
+
+html[data-theme="dark"] .empty-state {
+  color: var(--text-secondary);
 }
